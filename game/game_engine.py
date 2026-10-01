@@ -1,3 +1,4 @@
+import random
 import pygame
 from game.player import Player
 from game.anvil import Anvil
@@ -9,6 +10,7 @@ class GameEngine:
         self.height = height
         self.player = Player(width, height)
         self.anvils = []
+        self.particles = []
 
         self.spawn_delay = 700
         self.last_spawn_time = pygame.time.get_ticks()
@@ -55,11 +57,33 @@ class GameEngine:
                 self.game_state = "GAME_OVER"
 
             if anvil.is_off_screen(self.height):
+                impact_x = int(anvil.x + anvil.width // 2)
+                impact_y = self.height - 20
+
+                for _ in range(8):
+                    self.particles.append({
+                        "x": impact_x,
+                        "y": impact_y,
+                        "vx": random.uniform(-2.5, 2.5),
+                        "vy": random.uniform(-3.5, -1.5),
+                        "life": 20
+                    })
+
                 self.anvils.remove(anvil)
+
+        for particle in self.particles[:]:
+            particle["x"] += particle["vx"]
+            particle["y"] += particle["vy"]
+            particle["vy"] += 0.15
+            particle["life"] -= 1
+
+            if particle["life"] <= 0:
+                self.particles.remove(particle)
 
     def reset(self):
         self.player = Player(self.width, self.height)
         self.anvils.clear()
+        self.particles.clear()
         self.start_ticks = pygame.time.get_ticks()
         self.last_spawn_time = pygame.time.get_ticks()
         self.survival_time = 0
@@ -75,7 +99,16 @@ class GameEngine:
         self.player.render(screen)
         for anvil in self.anvils:
             anvil.render(screen)
+        for particle in self.particles:
+            radius = max(1, particle["life"] // 5)
 
+            pygame.draw.circle(
+                screen,
+                (180, 160, 130),
+                (int(particle["x"]), int(particle["y"])),
+                radius
+            )
+        
         time_surf = self.font_medium.render(f"Survival Time: {self.survival_time}s", True, (240, 240, 240))
         screen.blit(time_surf, (20, 20))
 
